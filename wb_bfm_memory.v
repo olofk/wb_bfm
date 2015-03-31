@@ -61,9 +61,6 @@ module wb_bfm_memory
    reg [aw-1:0] 	address;
    reg [dw-1:0] 	data;
 
-   reg [aw-1:0] 	next_address;
-   reg [dw-1:0] 	next_data;
-
    integer 		i;
    integer 		delay;
    integer 		seed;
@@ -77,7 +74,6 @@ module wb_bfm_memory
       else
 	reads = reads + 1;
       while(bfm0.has_next) begin
-	 //address = bfm0.address;
 	 //Set error on out of range accesses
 	 if(address[31:ADR_LSB] > mem_words) begin
 	    $display("%0d : Error : Attempt to access %x, which is outside of memory", $time, address);
