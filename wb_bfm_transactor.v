@@ -136,8 +136,6 @@ module wb_bfm_transactor # (
    task fill_wdata_array;
      input  [31:0]            burst_length; 
 
-      integer 		      idx;
-      
      begin
        // Fill write data array
        for(word = 0; word <= burst_length-1; word = word + 1) begin
@@ -145,8 +143,6 @@ module wb_bfm_transactor # (
            bfm.write_data[word] = user_data[word];
          end else begin
            bfm.write_data[word] = {$random,$random}; //FIXME
-	    //$display("%x", bfm.write_data[word]);
-	    
          end
        end
      end
