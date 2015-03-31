@@ -41,7 +41,8 @@ module wb_bfm_memory
 
    wb_bfm_slave
      #(.aw (aw),
-       .dw (dw))
+       .dw (dw),
+       .DEBUG (DEBUG))
    bfm0
      (.wb_clk   (wb_clk_i),
       .wb_rst   (wb_rst_i),
