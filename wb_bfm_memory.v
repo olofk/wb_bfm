@@ -25,7 +25,7 @@ module wb_bfm_memory
    output 	   wb_rty_o,
    output [dw-1:0] wb_dat_o);
 
-`include "wb_common_params.v"
+`include "wb_common.v"
    
    localparam bytes_per_dw = (dw/8);
    localparam mem_words = (mem_size_bytes/bytes_per_dw);   
@@ -100,7 +100,7 @@ module wb_bfm_memory
 	    end
 	 end
 	 if(bfm0.cycle_type === BURST_CYCLE)
-	   address = bfm0.next_addr(address, bfm0.burst_type);
+	   address = wb_next_adr(address, wb_cti_i, wb_bte_i, dw);
       end
    end
 
