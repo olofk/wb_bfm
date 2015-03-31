@@ -90,7 +90,7 @@ module wb_bfm_memory
 	       end
 	    end else begin
 	       data = {aw{1'b0}};
-	       for(i=0;i < 8; i=i+1)
+	       for(i=0;i < dw/8; i=i+1)
 		 if(bfm0.mask[i])
 		   data[i*8+:8] = mem[address[31:ADR_LSB]][i*8+:8];
 	       if(DEBUG) $display("%d : ram Read  0x%h = 0x%h %b", $time, address, data, bfm0.mask);
