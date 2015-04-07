@@ -57,11 +57,6 @@ module wb_bfm_slave
 	 if(DEBUG) $display("%0d : Got wb_cyc_i", $time);
 
 	 cycle_type = get_cycle_type(wb_cti_i);
-	 if(cycle_type === BURST_CYCLE)
-	   if(wb_cti_i === 3'b010)
-	     burst_type = {1'b0, wb_bte_i};
-	   else
-	     burst_type = LINEAR_BURST;
 	 
 	 op      = wb_we_i;
 	 address = wb_adr_i;
@@ -125,7 +120,7 @@ module wb_bfm_slave
 	 wb_ack_o <= #Tp 1'b0;
 	 wb_err_o <= #Tp 1'b0;
 
-	 has_next = !is_last(wb_cti_i) & !err;
+	 has_next = !wb_is_last(wb_cti_i) & !err;
 
 	 if(op === WRITE) begin
 	   data = wb_dat_i;
