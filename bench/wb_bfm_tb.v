@@ -10,6 +10,8 @@ module wb_bfm_tb;
    
    always #5 wb_clk <= ~wb_clk;
    initial  #100 wb_rst <= 0;
+
+   wire    done;
    
    wire [aw-1:0] wb_m2s_adr;
    wire [dw-1:0] wb_m2s_dat;
@@ -24,7 +26,10 @@ module wb_bfm_tb;
    wire 	 wb_s2m_err;
    wire 	 wb_s2m_rty;
 
-   wb_master wb_master0
+   wb_bfm_transactor
+     #(.MEM_HIGH (32'h00007fff),
+       .VERBOSE (0))
+   master
      (.wb_clk_i (wb_clk),
       .wb_rst_i (wb_rst),
       .wb_adr_o (wb_m2s_adr),
@@ -38,7 +43,8 @@ module wb_bfm_tb;
       .wb_dat_i (wb_s2m_dat),
       .wb_ack_i (wb_s2m_ack),
       .wb_err_i (wb_s2m_err),
-      .wb_rty_i (wb_s2m_rty));
+      .wb_rty_i (wb_s2m_rty),
+      .done     (done));
    
    wb_bfm_memory #(.DEBUG (0))
    wb_mem_model0
@@ -56,4 +62,10 @@ module wb_bfm_tb;
       .wb_ack_o (wb_s2m_ack),
       .wb_err_o (wb_s2m_err),
       .wb_rty_o (wb_s2m_rty));
+
+   always @(posedge done) begin
+      $display("All tests complete");
+      $finish;
+   end
+
 endmodule

@@ -6,12 +6,15 @@
 module wb_bfm_transactor # (
     parameter                aw              = 32,
     parameter                dw              = 32,
+    parameter                MEM_HIGH        = 32'hffffffff,
+    parameter                MEM_LOW         = 0,
+    parameter                TRANSACTIONS_PARAM    = 1000,
+    parameter                SUBTRANSACTIONS_PARAM = 100,
     parameter                VERBOSE         = 0,
     parameter                MAX_BURST_LEN   = 32,
     parameter                MAX_WAIT_STATES = 8,
-    parameter                MEM_LOW         = 0,
-    parameter                USER_WRITE_DATA = 0,
-    parameter                MEM_HIGH        = 32'hffffffff
+    parameter                SEED_PARAM            = 0,
+    parameter                USER_WRITE_DATA = 0
   ) (
     input 	      wb_clk_i,
     input 	      wb_rst_i,
@@ -41,13 +44,14 @@ module wb_bfm_transactor # (
   integer                    TRANSACTIONS;
   integer                    SUBTRANSACTIONS;
 
+  // Grab CLI Values
   initial begin
     if(!$value$plusargs("transactions=%d", TRANSACTIONS))
-      TRANSACTIONS = 1000;
+      TRANSACTIONS    = TRANSACTIONS_PARAM;
     if(!$value$plusargs("subtransactions=%d", SUBTRANSACTIONS))
-      SUBTRANSACTIONS = 50;
+      SUBTRANSACTIONS = SUBTRANSACTIONS_PARAM;
     if(!$value$plusargs("seed=%d", SEED))
-      SEED = 2;
+      SEED = SEED_PARAM;
   end
 
   wb_bfm_master #(
@@ -72,6 +76,14 @@ module wb_bfm_transactor # (
     .wb_rty_i                (wb_rty_i)
   );
 
+   function [4:0] bt2cb;
+      input [2:0] burst_type;
+      begin
+	   bt2cb[4:2] = burst_type[2] ? CTI_CONST_BURST : CTI_INC_BURST;
+	   bt2cb[1:0] = burst_type[1:0];
+      end
+   endfunction
+
    function [aw-1:0] gen_adr;
       input integer low;
       input integer high;
@@ -86,7 +98,8 @@ module wb_bfm_transactor # (
    function [2*aw-1:0] adr_range;
      input [aw-1:0]          adr_i;
      input [$clog2(MAX_BURST_LEN+1):0] len_i;
-     input [2:0]             burst_type_i;
+     input [2:0]             cti_i;
+     input [1:0]             bte_i;
      parameter               bpw = dw/8; //Bytes per word
      reg [aw-1:0]            adr;
      reg [aw-1:0]            adr_high;
@@ -97,32 +110,34 @@ module wb_bfm_transactor # (
      //if (bpw == 4) begin
       shift = $clog2(bpw);
        adr                   = adr_i>>shift;
-       case (burst_type_i)
-         LINEAR_BURST   : begin
+      if (cti_i === CTI_INC_BURST)
+       case (bte_i)
+         BTE_LINEAR : begin
            adr_high          = adr+len_i;
            adr_low           = adr;
          end
-         WRAP_4_BURST   : begin
+         BTE_WRAP_4   : begin
            adr_high          = adr[aw-1:2]*4+4;
            adr_low           = adr[aw-1:2]*4;
          end
-         WRAP_8_BURST   : begin
+         BTE_WRAP_8   : begin
            adr_high          = adr[aw-1:3]*8+8;
            adr_low           = adr[aw-1:3]*8;
          end
-         WRAP_16_BURST  : begin
+         BTE_WRAP_16  : begin
            adr_high          = adr[aw-1:4]*16+16;
            adr_low           = adr[aw-1:4]*16;
          end
-         CONSTANT_BURST : begin
-           adr_high          = adr+1;
-           adr_low           = adr;
-         end
          default : begin
-           $error("%d : Illegal burst type (%b)", $time, burst_type);
+           $error("%d : Illegal burst type (%b)", $time, bte_i);
            adr_range         = {2*aw{1'bx}};
          end
-       endcase // case (burst_type)
+       endcase // case (bte_i)
+      else begin
+         adr_high          = adr+1;
+         adr_low           = adr;
+      end
+
       adr_high = (adr_high << shift)-1;
       adr_low  = adr_low << shift;
        adr_range             = {adr_high, adr_low};
@@ -150,6 +165,10 @@ module wb_bfm_transactor # (
    
    integer                   burst_length;
    reg [2:0]                 burst_type;
+   reg [2:0] 		     cti;
+   reg [1:0] 		     bte;
+   
+   reg [2:0]                 cycle_type;
 
    integer                   transaction;
    integer                   subtransaction;
@@ -194,32 +213,34 @@ module wb_bfm_transactor # (
           t_address                     = gen_adr(MEM_LOW, MEM_HIGH);
           burst_length                  = ({$random(SEED)} % MAX_BURST_LEN) + 1;
           burst_type                    = ({$random(SEED)} % 3);
-          {t_adr_high, t_adr_low}       = adr_range(t_address, burst_length, burst_type);
+          {cti,bte} = bt2cb(burst_type);
+          {t_adr_high, t_adr_low}       = adr_range(t_address, burst_length, cti, bte);
 
           // Check if initial base address and max burst length lie within
           // MEM_HIGH/MEM_LOW bounds. If not, regenerate random values until condition met.
-          while((t_adr_high > MEM_HIGH) || (t_adr_low < MEM_LOW)) begin
+          while((t_adr_high > MEM_HIGH) || (t_adr_low < MEM_LOW) || (t_adr_high == t_adr_low)) begin
             t_address                   = gen_adr(MEM_LOW, MEM_HIGH);
             burst_length                = ({$random(SEED)} % MAX_BURST_LEN) + 1;
-            burst_type                  = ({$random(SEED)} % 3);
-            {t_adr_high,t_adr_low}      = adr_range(t_address, burst_length, burst_type);
+            burst_type                  = ({$random(SEED)} % 4);
+            {cti,bte} = bt2cb(burst_type);
+            {t_adr_high,t_adr_low}      = adr_range(t_address, burst_length, cti, bte);
           end
 
           // Write Transaction
           if (VERBOSE>0)
-            $display("  Transaction %0d (Write): Start Address: %h, Burst Length: %0d Burst Type: %0d", transaction, t_address, burst_length, burst_type);
+            $display("  Transaction %0d (Write): Start Address: %h, Cycle Type: %b, Burst Type: %b, Burst Length: %0d", transaction, t_address, cycle_type, burst_type, burst_length);
           
           // Fill Write Array then Send the Write Transaction
           fill_wdata_array(burst_length);
-          bfm.write_burst(t_adr_low, t_address, {(dw/8){1'b1}}, burst_length, burst_type, err);
+          bfm.write_burst(t_adr_low, t_address, {(dw/8){1'b1}}, cycle_type, burst_type, burst_length, err);
 
           // Read data can be read back from wishbone memory.
           if (VERBOSE>0)
-            $display("  Transaction %0d (Read): Start Address: %h, Burst Length: %0d, Burst Type: %0d", transaction, t_address, burst_length, burst_type);
-          bfm.read_burst(t_adr_low, t_address, {dw/8{1'b1}}, burst_length, burst_type, err);
+            $display("  Transaction %0d (Read): Start Address: %h, Cycle Type: %b, Burst Type: %b, Burst Length: %0d", transaction, t_address, cycle_type, burst_type, burst_length);
+          bfm.read_burst(t_adr_low, t_address, {dw/8{1'b1}}, cycle_type, burst_type, burst_length, err);
 
           if (VERBOSE>0)
-              $display("Transaction %0d Completed Successfully (Start Address: %h, Burst Length=%0d, Burst Type=%0d)", transaction, t_address, burst_length, burst_type);
+              $display("Transaction %0d Completed Successfully (Start Address: %h, Cycle Type: %b, Burst Type=%b, Burst Length=%0d)", transaction, t_address, cycle_type, burst_type, burst_length);
         end else begin
           // Fully randomised test suite.
 
@@ -227,15 +248,15 @@ module wb_bfm_transactor # (
           t_address                     = gen_adr(MEM_LOW, MEM_HIGH);
           burst_length                  = ({$random(SEED)} % MAX_BURST_LEN) + 1;
           burst_type                    = ({$random(SEED)} % 3);
-          {t_adr_high, t_adr_low}       = adr_range(t_address, MAX_BURST_LEN, LINEAR_BURST);
+          {t_adr_high, t_adr_low}       = adr_range(t_address, MAX_BURST_LEN, CTI_INC_BURST, BTE_LINEAR);
 
           // Check if initial base address and max burst length lie within
           // MEM_HIGH/MEM_LOW bounds. If not, regenerate random values until condition met.
-          while((t_adr_high > MEM_HIGH) || (t_adr_low < MEM_LOW)) begin
+          while((t_adr_high > MEM_HIGH) || (t_adr_low < MEM_LOW) || (t_adr_high == t_adr_low)) begin
             t_address                   = gen_adr(MEM_LOW, MEM_HIGH);
             burst_length                = ({$random(SEED)} % MAX_BURST_LEN) + 1;
             burst_type                  = ({$random(SEED)} % 3);
-            {t_adr_high,t_adr_low}      = adr_range(t_address, MAX_BURST_LEN, LINEAR_BURST);
+            {t_adr_high,t_adr_low}      = adr_range(t_address, MAX_BURST_LEN, CTI_INC_BURST, BTE_LINEAR);
           end
 
           // Write Transaction
@@ -244,15 +265,15 @@ module wb_bfm_transactor # (
           
           // Fill Write Array then Send the Write Transaction
           fill_wdata_array(MAX_BURST_LEN);
-          bfm.write_burst(t_address, t_address, {dw/8{1'b1}}, MAX_BURST_LEN, LINEAR_BURST, err);
+          bfm.write_burst(t_address, t_address, {dw/8{1'b1}}, CTI_INC_BURST, BTE_LINEAR, MAX_BURST_LEN, err);
 
           // Read data can be read back from wishbone memory.
           if (VERBOSE>0)
             $display("  Transaction %0d Initialisation (Read): Start Address: %h, Burst Length: %0d", transaction, t_address, MAX_BURST_LEN);
-          bfm.read_burst(t_address, t_address, {dw/8{1'b1}}, MAX_BURST_LEN, LINEAR_BURST, err);
+          bfm.read_burst(t_address, t_address, {dw/8{1'b1}}, CTI_INC_BURST, BTE_LINEAR, MAX_BURST_LEN, err);
 
           if (VERBOSE>0)
-            $display("Transaction %0d initialisation ok (Start Address: %h, Burst Length: %0d, Burst Type: %0d)", transaction, t_address, MAX_BURST_LEN, LINEAR_BURST);
+            $display("Transaction %0d initialisation ok (Start Address: %h, Cycle Type: %b, Burst Type: %b, Burst Length: %0d)", transaction, t_address, CTI_INC_BURST, BTE_LINEAR, MAX_BURST_LEN);
 
           // Start subtransaction loop.
           for (subtransaction = 1; subtransaction <= SUBTRANSACTIONS ; subtransaction = subtransaction + 1) begin
@@ -268,33 +289,32 @@ module wb_bfm_transactor # (
             st_address                  = gen_adr(t_adr_low, t_adr_high);
             burst_length                = ({$random(SEED)} % MAX_BURST_LEN) + 1;
             burst_type                  = ({$random(SEED)} % 3);
-            {st_adr_high, st_adr_low}   = adr_range(st_address, burst_length, burst_type);
+            {cti,bte} = bt2cb(burst_type);
+            {st_adr_high, st_adr_low}   = adr_range(st_address, burst_length, cti, bte);
 
             // Repeat check for MEM_LOW/MEM_HIGH bounds
-            while((st_adr_high > t_adr_high) || (st_adr_low < t_adr_low)) begin
+            while((st_adr_high > t_adr_high) || (st_adr_low < t_adr_low) || (st_adr_high == st_adr_low)) begin
               st_address                = gen_adr(t_adr_low, t_adr_high);
               burst_length              = ({$random(SEED)} % MAX_BURST_LEN) + 1;
-              burst_type                = ({$random(SEED)} % 3);
-              {st_adr_high, st_adr_low} = adr_range(st_address, burst_length, burst_type);
+              burst_type                = ({$random(SEED)} % 4);
+              {cycle_type, burst_type}  = bt2cb(burst_type);
+              {st_adr_high, st_adr_low} = adr_range(st_address, burst_length, cti, bte);
             end
 
-//	     $display("High adr=%x",st_adr_high);
-//	     $display("Low adr =%x",st_adr_low);
-	     
             if (~st_type) begin
               if (VERBOSE>0)
-                $display("  Subtransaction %0d.%0d (Read): Start Address: %h, Burst Type: %0h, Burst Length: %0d", transaction, subtransaction, st_address, burst_type, burst_length);
+                $display("  Subtransaction %0d.%0d (Read): Start Address: %h, Cycle Type: %b, Burst Type: %b, Burst Length: %0d", transaction, subtransaction, st_address, cycle_type, burst_type, burst_length);
 
               // Send Read Transaction
-              bfm.read_burst(t_address, st_address, {dw/8{1'b1}}, burst_length, burst_type, err);
+              bfm.read_burst(t_address, st_address, {dw/8{1'b1}}, cycle_type, burst_type, burst_length, err);
              
             end else begin
               if (VERBOSE>0)
-                $display("  Subtransaction %0d.%0d (Write): Start Address: %h, Burst Type: %0h, Burst Length: %0d", transaction, subtransaction, st_address, burst_type, burst_length);
+                $display("  Subtransaction %0d.%0d (Write): Start Address: %h, Cycle Type: %b, Burst Type: %b, Burst Length: %0d", transaction, subtransaction, st_address, cycle_type, burst_type, burst_length);
 
               // Fill Write Array then Send the Write Transaction
               fill_wdata_array(burst_length);
-              bfm.write_burst(t_address, st_address, {dw/8{1'b1}}, burst_length, burst_type, err);
+              bfm.write_burst(t_address, st_address, {dw/8{1'b1}}, cycle_type, burst_type, burst_length, err);
               
             end // if (st_type)
 
@@ -304,9 +324,10 @@ module wb_bfm_transactor # (
           if (VERBOSE>0)
             $display("Transaction %0d Completed Successfully", transaction);
 
-          bfm.clear_buffer_data;
         end // if (SUBTRANSACTIONS == 0)
 
+        // Clear Buffer Data before next transaction
+        bfm.clear_buffer_data;
       end // for (transaction=0;...
       done = 1;
    end

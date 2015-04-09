@@ -33,7 +33,7 @@ module wb_bfm_master #(
    reg [dw/8-1:0] 	     mask;
   reg                        op;
 
-  reg                        cycle_type;
+  reg [2:0]                  cycle_type;
   reg [2:0]                  burst_type;
   reg [31:0]                 burst_length;
   reg [aw-1:0]               buffer_addr_tmp;
@@ -72,7 +72,7 @@ module wb_bfm_master #(
       addr                   = addr_i;
       data                   = data_i;
       mask                   = mask_i;
-      cycle_type             = CLASSIC_CYCLE;
+      cycle_type             = CTI_CLASSIC;
       op                     = WRITE;
 
       init;
@@ -86,8 +86,9 @@ module wb_bfm_master #(
     input  [aw-1:0]          base_addr;
     input  [aw-1:0]          addr_i;
      input [dw/8-1:0] 	     mask_i;
-    input  [31:0]            burst_length_i;
+    input  [2:0]             cycle_type_i;
     input  [2:0]             burst_type_i;
+    input  [31:0]            burst_length_i;
     output                   err_o;
   begin
 
@@ -97,7 +98,7 @@ module wb_bfm_master #(
     mask                     = mask_i;
     op                       = WRITE;
     burst_length             = burst_length_i;
-    cycle_type               = BURST_CYCLE;
+    cycle_type               = cycle_type_i;
     burst_type               = burst_type_i;
     index                    = 0;
     err_o                    = 0;
@@ -109,14 +110,14 @@ module wb_bfm_master #(
       data                     = write_data[index];
 
       if (VERBOSE>2) begin
-        $display("    %t: Write Data %h written to buffer at address %h", $time, write_data[index], buffer_addr);
-        $display("    %t: Write Data %h written to memory at address %h", $time, write_data[index], addr);
+        $display("    %t: Write Data %h written to buffer at address %h at iteration %0d", $time, write_data[index], buffer_addr, index);
+        $display("    %t: Write Data %h written to memory at address %h at iteration %0d", $time, write_data[index], addr, index);
       end else if (VERBOSE>1) begin
-        $display("    Write Data %h written to memory at address %h", write_data[index], addr);
+        $display("    Write Data %h written to memory at address %h at iteration %0d", write_data[index], addr, index);
       end
 
       next;
-      addr                   = next_addr(addr, burst_type);
+      addr                   = wb_next_adr(addr, cycle_type, burst_type, dw);
       buffer_addr_tmp        = addr - base_addr;
       buffer_addr            = buffer_addr_tmp[ADR_LSB+BUFFER_WIDTH-1:ADR_LSB];
       index                  = index + 1;
@@ -132,8 +133,9 @@ module wb_bfm_master #(
     input  [aw-1:0]          base_addr;
     input  [aw-1:0]          addr_i;
     input  [dw/8-1:0]             mask_i;
-    input [31:0]             burst_length_i;
-    input [2:0]              burst_type_i;
+    input  [2:0]             cycle_type_i;
+    input  [1:0]             burst_type_i;
+    input  [31:0]            burst_length_i;
     output                   err_o;
 
   begin
@@ -143,9 +145,9 @@ module wb_bfm_master #(
     buffer_addr              = buffer_addr_tmp[ADR_LSB+BUFFER_WIDTH-1:ADR_LSB];
     mask                     = mask_i;
     op                       = READ;
-    burst_length             = burst_length_i;
-    cycle_type               = BURST_CYCLE;
+    cycle_type               = cycle_type_i;
     burst_type               = burst_type_i;
+    burst_length             = burst_length_i;
     index                    = 0;
     err_o                    = 0;
 
@@ -154,7 +156,7 @@ module wb_bfm_master #(
     while(index < burst_length) begin
       next;
       data_compare(addr, data, index);
-      addr                   = next_addr(addr, burst_type);
+      addr                   = wb_next_adr(addr, cycle_type, burst_type, dw);
       buffer_addr_tmp        = addr - base_addr;
       buffer_addr            = buffer_addr_tmp[ADR_LSB+BUFFER_WIDTH-1:ADR_LSB];
       index                  = index + 1;
@@ -192,15 +194,16 @@ module wb_bfm_master #(
   task insert_wait_states;
     begin
 
+      wb_cyc_o               = #Tp 1'b0;
+      wb_stb_o               = #Tp 1'b0;
+      wb_we_o                = #Tp 1'b0;
+      wb_cti_o               = #Tp 3'b000;
+      wb_bte_o               = #Tp 2'b00;
+      wb_sel_o               = #Tp {dw/8{1'b0}};
+      wb_adr_o               = #Tp {aw{1'b0}};
+      wb_dat_o               = #Tp {dw{1'b0}};
+
       for (wait_states_cnt = 0 ; wait_states_cnt < wait_states; wait_states_cnt = wait_states_cnt + 1) begin
-        wb_cyc_o             <= #Tp 1'b0;
-        wb_stb_o             <= #Tp 1'b0;
-        wb_we_o              <= #Tp 1'b0;
-        wb_cti_o             <= #Tp 3'b000;
-        wb_bte_o             <= #Tp 2'b00;
-        wb_sel_o             <= #Tp {dw/8{1'b0}};
-        wb_adr_o             <= #Tp {aw{1'b0}};
-        wb_dat_o             <= #Tp {dw{1'b0}};
         @(posedge wb_clk_i);
       end
     end
@@ -234,16 +237,19 @@ module wb_bfm_master #(
       wb_we_o                <= #Tp op;
       wb_cyc_o               <= #Tp 1'b1;
 
-      if(cycle_type == CLASSIC_CYCLE) begin
+      if(cycle_type == CTI_CLASSIC) begin
+        if (VERBOSE > 1) $display("INIT: Classic Cycle");
         wb_cti_o             <= #Tp 3'b000;
         wb_bte_o             <= #Tp 2'b00;
       end else if(index == burst_length-1) begin
+        if (VERBOSE > 1) $display("INIT: Burst - last cycle");
         wb_cti_o             <= #Tp 3'b111;
         wb_bte_o             <= #Tp 2'b00;
-      end else if(cycle_type == CONSTANT_BURST) begin
+      end else if(cycle_type == CTI_CONST_BURST) begin
         wb_cti_o             <= #Tp 3'b001;
         wb_bte_o             <= #Tp 2'b00;
       end else begin
+        if (VERBOSE > 1) $display("INIT: Incr Burst cycle");
         wb_cti_o             <=# Tp 3'b010;
         wb_bte_o             <=# Tp burst_type[1:0];
       end
@@ -256,7 +262,7 @@ module wb_bfm_master #(
       wb_dat_o               <= #Tp (op === WRITE) ? data : {dw{1'b0}};
       wb_stb_o               <= #Tp 1'b1; //FIXME: Add wait states
 
-      if(cycle_type == CLASSIC_CYCLE) begin
+      if(cycle_type == CTI_CLASSIC) begin
         while (wb_ack_i !== 1'b1)
            @(posedge wb_clk_i);
         data                 = wb_dat_i;

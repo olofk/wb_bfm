@@ -11,7 +11,6 @@ tb_src_files =
  wb_bfm_memory.v
  wb_bfm_transactor.v
 tb_private_src_files =
- bench/wb_master.v
  bench/wb_bfm_tb.v
 
 [simulator]
