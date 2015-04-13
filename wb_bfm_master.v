@@ -246,6 +246,7 @@ module wb_bfm_master #(
         wb_cti_o             <= #Tp 3'b111;
         wb_bte_o             <= #Tp 2'b00;
       end else if(cycle_type == CTI_CONST_BURST) begin
+        if (VERBOSE > 1) $display("INIT: Const Burst cycle");
         wb_cti_o             <= #Tp 3'b001;
         wb_bte_o             <= #Tp 2'b00;
       end else begin
