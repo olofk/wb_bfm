@@ -13,6 +13,9 @@ module wb_bfm_transactor # (
     parameter                VERBOSE         = 0,
     parameter                MAX_BURST_LEN   = 32,
     parameter                MAX_WAIT_STATES = 8,
+    parameter                CLASSIC_PROB          = 33,
+    parameter                CONST_BURST_PROB      = 33,
+    parameter                INCR_BURST_PROB       = 34,
     parameter                SEED_PARAM            = 0,
     parameter                USER_WRITE_DATA = 0
   ) (
@@ -38,7 +41,6 @@ module wb_bfm_transactor # (
    localparam ADR_LSB = $clog2(dw/8);
    
   reg [dw-1:0]               user_data[0:MAX_BURST_LEN-1];
-  integer                    word;
 
   integer                    SEED;
   integer                    TRANSACTIONS;
@@ -76,14 +78,6 @@ module wb_bfm_transactor # (
     .wb_rty_i                (wb_rty_i)
   );
 
-   function [4:0] bt2cb;
-      input [2:0] burst_type;
-      begin
-	   bt2cb[4:2] = burst_type[2] ? CTI_CONST_BURST : CTI_INC_BURST;
-	   bt2cb[1:0] = burst_type[1:0];
-      end
-   endfunction
-
    function [aw-1:0] gen_adr;
       input integer low;
       input integer high;
@@ -92,6 +86,50 @@ module wb_bfm_transactor # (
       end
    endfunction
 
+   function [2:0] gen_cycle_type;
+      input integer cycle_type_prob;
+      begin
+         if (cycle_type_prob <= CLASSIC_PROB) begin
+            gen_cycle_type                = 3'b000;
+         end else if (cycle_type_prob <= (CLASSIC_PROB + CONST_BURST_PROB)) begin
+            gen_cycle_type                = CTI_CONST_BURST;
+         end else begin
+            gen_cycle_type                = CTI_INC_BURST;
+         end
+      end
+   endfunction
+
+   function [aw+3+2+32-1:0] gen_cycle_params;
+      input [aw-1:0] adr_min_i;
+      input [aw-1:0] adr_max_i;
+
+      reg [aw-1:0]   adr_low;
+      reg [aw-1:0]   adr_high;
+
+      reg [aw-1:0]   address;
+      reg [2:0]      cycle_type;
+      reg [1:0]      burst_type;
+      reg [31:0]     burst_length;
+      
+      begin
+         adr_low  = 0;
+         adr_high = 0;
+         // Repeat check for MEM_LOW/MEM_HIGH bounds until satisfied
+         while((adr_high > adr_max_i) || (adr_low < adr_min_i) || (adr_high == adr_low)) begin
+            address                = gen_adr(adr_min_i, adr_max_i);
+            cycle_type             = gen_cycle_type({$random(SEED)} % 100);
+
+	    burst_type = (cycle_type === CTI_INC_BURST) ? ({$random(SEED)} % 4) : 0;
+
+	    burst_length = (cycle_type === CTI_CLASSIC) ? 1 :
+			   ({$random(SEED)} % MAX_BURST_LEN) + 1;
+
+              {adr_high, adr_low} = adr_range(address, burst_length, cycle_type, burst_type);
+         end
+	 gen_cycle_params = {address, cycle_type, burst_type, burst_length};
+      end
+   endfunction
+      
    /*Return a 2*aw array with the highest and lowest accessed addresses
     based on starting address and burst type
     TODO: Account for short wrap bursts. Fix for 8-bit mode*/
@@ -151,6 +189,8 @@ module wb_bfm_transactor # (
    task fill_wdata_array;
      input  [31:0]            burst_length; 
 
+     integer 		      word;
+      
      begin
        // Fill write data array
        for(word = 0; word <= burst_length-1; word = word + 1) begin
@@ -164,9 +204,7 @@ module wb_bfm_transactor # (
    endtask
    
    integer                   burst_length;
-   reg [2:0]                 burst_type;
-   reg [2:0] 		     cti;
-   reg [1:0] 		     bte;
+   reg [1:0]                 burst_type;
    
    reg [2:0]                 cycle_type;
 
@@ -179,8 +217,6 @@ module wb_bfm_transactor # (
    reg [aw-1:0]              t_adr_high;
    reg [aw-1:0]              t_adr_low;
    reg [aw-1:0]              st_address;
-   reg [aw-1:0]              st_adr_high;
-   reg [aw-1:0]              st_adr_low;
    reg                       st_type;
 
    initial begin
@@ -209,22 +245,7 @@ module wb_bfm_transactor # (
           // followed by identical Read Burst Transaction.
           $display("  Running Basic Tests Only. To run fully randomised tests set number of subtransactions >= 1");
          
-          // Generate initial transaction parameters
-          t_address                     = gen_adr(MEM_LOW, MEM_HIGH);
-          burst_length                  = ({$random(SEED)} % MAX_BURST_LEN) + 1;
-          burst_type                    = ({$random(SEED)} % 3);
-          {cti,bte} = bt2cb(burst_type);
-          {t_adr_high, t_adr_low}       = adr_range(t_address, burst_length, cti, bte);
-
-          // Check if initial base address and max burst length lie within
-          // MEM_HIGH/MEM_LOW bounds. If not, regenerate random values until condition met.
-          while((t_adr_high > MEM_HIGH) || (t_adr_low < MEM_LOW) || (t_adr_high == t_adr_low)) begin
-            t_address                   = gen_adr(MEM_LOW, MEM_HIGH);
-            burst_length                = ({$random(SEED)} % MAX_BURST_LEN) + 1;
-            burst_type                  = ({$random(SEED)} % 4);
-            {cti,bte} = bt2cb(burst_type);
-            {t_adr_high,t_adr_low}      = adr_range(t_address, burst_length, cti, bte);
-          end
+	  {t_address, cycle_type, burst_type, burst_length} = gen_cycle_params(MEM_LOW, MEM_HIGH);
 
           // Write Transaction
           if (VERBOSE>0)
@@ -232,7 +253,7 @@ module wb_bfm_transactor # (
           
           // Fill Write Array then Send the Write Transaction
           fill_wdata_array(burst_length);
-          bfm.write_burst(t_adr_low, t_address, {(dw/8){1'b1}}, cycle_type, burst_type, burst_length, err);
+          bfm.write_burst(t_address, t_address, {(dw/8){1'b1}}, cycle_type, burst_type, burst_length, err);
 
           // Read data can be read back from wishbone memory.
           if (VERBOSE>0)
@@ -244,18 +265,12 @@ module wb_bfm_transactor # (
         end else begin
           // Fully randomised test suite.
 
-          // Generate initial transaction parameters
-          t_address                     = gen_adr(MEM_LOW, MEM_HIGH);
-          burst_length                  = ({$random(SEED)} % MAX_BURST_LEN) + 1;
-          burst_type                    = ({$random(SEED)} % 3);
-          {t_adr_high, t_adr_low}       = adr_range(t_address, MAX_BURST_LEN, CTI_INC_BURST, BTE_LINEAR);
-
           // Check if initial base address and max burst length lie within
           // MEM_HIGH/MEM_LOW bounds. If not, regenerate random values until condition met.
+          t_adr_high  = 0;
+          t_adr_low   = 0;
           while((t_adr_high > MEM_HIGH) || (t_adr_low < MEM_LOW) || (t_adr_high == t_adr_low)) begin
             t_address                   = gen_adr(MEM_LOW, MEM_HIGH);
-            burst_length                = ({$random(SEED)} % MAX_BURST_LEN) + 1;
-            burst_type                  = ({$random(SEED)} % 3);
             {t_adr_high,t_adr_low}      = adr_range(t_address, MAX_BURST_LEN, CTI_INC_BURST, BTE_LINEAR);
           end
 
@@ -285,21 +300,8 @@ module wb_bfm_transactor # (
             // Transaction Type: 0=Read, 1=Write
             st_type                     = {$random(SEED)} % 2;
 
-            // Generate initial base address for subtransaction
-            st_address                  = gen_adr(t_adr_low, t_adr_high);
-            burst_length                = ({$random(SEED)} % MAX_BURST_LEN) + 1;
-            burst_type                  = ({$random(SEED)} % 3);
-            {cti,bte} = bt2cb(burst_type);
-            {st_adr_high, st_adr_low}   = adr_range(st_address, burst_length, cti, bte);
-
-            // Repeat check for MEM_LOW/MEM_HIGH bounds
-            while((st_adr_high > t_adr_high) || (st_adr_low < t_adr_low) || (st_adr_high == st_adr_low)) begin
-              st_address                = gen_adr(t_adr_low, t_adr_high);
-              burst_length              = ({$random(SEED)} % MAX_BURST_LEN) + 1;
-              burst_type                = ({$random(SEED)} % 4);
-              {cycle_type, burst_type}  = bt2cb(burst_type);
-              {st_adr_high, st_adr_low} = adr_range(st_address, burst_length, cti, bte);
-            end
+            {st_address, cycle_type, burst_type, burst_length} = gen_cycle_params(t_adr_low, t_adr_high);
+                 
 
             if (~st_type) begin
               if (VERBOSE>0)
