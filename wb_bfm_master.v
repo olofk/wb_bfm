@@ -283,7 +283,7 @@ module wb_bfm_master #(
       wb_dat_o               <= #Tp (op === WRITE) ? data : {dw{1'b0}};
       wb_stb_o               <= #Tp 1'b1; //FIXME: Add wait states
 
-       if(index == burst_length-1)
+      if((index == burst_length-1) && (cycle_type !== CTI_CLASSIC))
          wb_cti_o           <= #Tp 3'b111;
 
        @(posedge wb_clk_i);
