@@ -36,8 +36,7 @@ module wb_bfm_transactor # (
     parameter                CLASSIC_PROB          = 33,
     parameter                CONST_BURST_PROB      = 33,
     parameter                INCR_BURST_PROB       = 34,
-    parameter                SEED_PARAM            = 0,
-    parameter                USER_WRITE_DATA = 0
+    parameter                SEED_PARAM            = 0
   ) (
     input 	      wb_clk_i,
     input 	      wb_rst_i,
@@ -60,8 +59,6 @@ module wb_bfm_transactor # (
 
    localparam ADR_LSB = $clog2(dw/8);
    
-  reg [dw-1:0]               user_data[0:MAX_BURST_LEN-1];
-
   integer                    SEED;
   integer                    TRANSACTIONS;
   integer                    SUBTRANSACTIONS;
@@ -203,8 +200,7 @@ module wb_bfm_transactor # (
    end
    endfunction
 
-   // Task to fill Write Data array. Set the USER_WRITE_DATA top level
-   // parameter to any non-zero value to initialise from user_data[]. Otherwise
+   // Task to fill Write Data array.
    // random data will be used.
    task fill_wdata_array;
      input  [31:0]            burst_length; 
@@ -214,11 +210,7 @@ module wb_bfm_transactor # (
      begin
        // Fill write data array
        for(word = 0; word <= burst_length-1; word = word + 1) begin
-         if (USER_WRITE_DATA) begin
-           bfm.write_data[word] = user_data[word];
-         end else begin
-           bfm.write_data[word] = {$random,$random}; //FIXME
-         end
+          bfm.write_data[word] = $random;
        end
      end
    endtask
