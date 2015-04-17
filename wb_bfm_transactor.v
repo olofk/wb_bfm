@@ -250,6 +250,25 @@ module wb_bfm_transactor # (
       end
    endtask
 
+   task display_subtransaction;
+      input [aw-1:0] address;
+      input [2:0]    cycle_type;
+      input [1:0]    burst_type;
+      input integer  burst_length;
+      input 	     wr;
+      
+      begin
+	 if (VERBOSE > 0) begin
+	    $write("  Subtransaction %0d.%0d ", transaction, subtransaction);
+	    if (wr)
+	      $write("(Write)");
+	    else
+	      $write("(Read) ");
+	    $display(": Start Address: %h, Cycle Type: %b, Burst Type: %b, Burst Length: %0d", address, cycle_type, burst_type, burst_length);
+	 end
+      end
+   endtask
+   
    // Task to fill Write Data array.
    // random data will be used.
    task fill_wdata_array;
@@ -377,27 +396,20 @@ module wb_bfm_transactor # (
 
           // Start subtransaction loop.
           for (subtransaction = 1; subtransaction <= SUBTRANSACTIONS ; subtransaction = subtransaction + 1) begin
-            if (VERBOSE>0)
-              $display("%m : Subtransaction: %0d/%0d", subtransaction, SUBTRANSACTIONS);
-            //else if(!(subtransaction%(SUBTRANSACTIONS/10)))
-            //  $display("%m : Subtransaction: %0d/%0d", subtransaction, SUBTRANSACTIONS);
 
             // Transaction Type: 0=Read, 1=Write
             st_type                     = {$random(SEED)} % 2;
 
             {st_address, cycle_type, burst_type, burst_length} = gen_cycle_params(t_adr_low, t_adr_high);
                  
+            display_subtransaction(st_address, cycle_type, burst_type, burst_length, st_type);
 
             if (~st_type) begin
-              if (VERBOSE>0)
-                $display("  Subtransaction %0d.%0d (Read): Start Address: %h, Cycle Type: %b, Burst Type: %b, Burst Length: %0d", transaction, subtransaction, st_address, cycle_type, burst_type, burst_length);
 
               // Send Read Transaction
               bfm.read_burst(t_address, st_address, {dw/8{1'b1}}, cycle_type, burst_type, burst_length, err);
              
             end else begin
-              if (VERBOSE>0)
-                $display("  Subtransaction %0d.%0d (Write): Start Address: %h, Cycle Type: %b, Burst Type: %b, Burst Length: %0d", transaction, subtransaction, st_address, cycle_type, burst_type, burst_length);
 
               // Fill Write Array then Send the Write Transaction
               fill_wdata_array(burst_length);
