@@ -102,12 +102,10 @@ module wb_bfm_memory
 	    if(bfm0.op === WRITE) begin
 	       bfm0.write_ack(data);
 	       address = bfm0.address;
-	       if(wb_stb_i) begin
 	       if(DEBUG) $display("%d : ram Write 0x%h = 0x%h %b", $time, address, data, bfm0.mask);
 	       for(i=0;i < dw/8; i=i+1)
 		 if(bfm0.mask[i])
 		   mem[address[31:ADR_LSB]][i*8+:8] = data[i*8+:8];
-	       end
 	    end else begin
 	       data = {aw{1'b0}};
 	       for(i=0;i < dw/8; i=i+1)
