@@ -73,6 +73,16 @@ module wb_bfm_transactor # (
       SEED = SEED_PARAM;
   end
 
+   integer cnt_cti_classic = 0;
+   integer cnt_cti_const_burst = 0;
+   integer cnt_cti_inc_burst = 0;
+   integer cnt_cti_invalid = 0;
+
+   integer cnt_bte_linear  = 0;
+   integer cnt_bte_wrap_4  = 0;
+   integer cnt_bte_wrap_8  = 0;
+   integer cnt_bte_wrap_16 = 0;
+
   wb_bfm_master #(
 		  .dw (dw),
     .MAX_BURST_LEN           (MAX_BURST_LEN),
@@ -200,6 +210,46 @@ module wb_bfm_transactor # (
    end
    endfunction
 
+   //Gather transaction statistics
+   //TODO: Record shortest/longest bursts.
+   task update_stats;
+      input [2:0] cti;
+      input [1:0] bte;
+      input integer burst_length;
+      begin
+	 case (cti)
+	   CTI_CLASSIC:     cnt_cti_classic = cnt_cti_classic + 1;
+	   CTI_CONST_BURST: cnt_cti_const_burst = cnt_cti_const_burst + 1;
+	   CTI_INC_BURST:   cnt_cti_inc_burst = cnt_cti_inc_burst + 1;
+	   default:         cnt_cti_invalid = cnt_cti_invalid + 1;
+	 endcase // case (cti)
+	 if (cti === CTI_INC_BURST)
+	   case (bte)
+             BTE_LINEAR  : cnt_bte_linear  = cnt_bte_linear  + 1;
+             BTE_WRAP_4  : cnt_bte_wrap_4  = cnt_bte_wrap_4  + 1;
+             BTE_WRAP_8  : cnt_bte_wrap_8  = cnt_bte_wrap_8  + 1;
+             BTE_WRAP_16 : cnt_bte_wrap_16 = cnt_bte_wrap_16 + 1;
+	     default : $error("Invalid BTE %2b", bte);
+	   endcase // case (bte)
+      end
+   endtask
+
+   task display_stats;
+      begin
+	 $display("#################################");
+	 $display("##### Cycle Type Statistics #####");
+	 $display("#################################");
+	 $display("Invalid cycle types   : %0d", cnt_cti_invalid);
+	 $display("Classic cycles        : %0d", cnt_cti_classic);
+	 $display("Constant burst cycles : %0d", cnt_cti_const_burst);
+	 $display("Increment burst cycles: %0d", cnt_cti_inc_burst);
+	 $display("   Linear bursts      : %0d", cnt_bte_linear);
+	 $display("   4-beat bursts      : %0d", cnt_bte_wrap_4);
+	 $display("   8-beat bursts      : %0d", cnt_bte_wrap_8);
+	 $display("  16-beat bursts      : %0d", cnt_bte_wrap_16);
+      end
+   endtask
+
    // Task to fill Write Data array.
    // random data will be used.
    task fill_wdata_array;
@@ -237,8 +287,27 @@ module wb_bfm_transactor # (
       st_type = 0;
       err     = 0;
 
-      $display("%m : Running %0d transactions, %0d subtransactions per transaction", TRANSACTIONS, SUBTRANSACTIONS);
-      $display("Max burst length=%0d", MAX_BURST_LEN);
+      $display("##############################################################");
+      $display("############# Wishbone Master Test Configuration #############");
+      $display("##############################################################");
+      $display("");
+      $display("%m:");
+      $display("  Memory High Address   : %h", MEM_HIGH);
+      $display("  Memory Low Address    : %h", MEM_LOW);
+      $display("  Transactions          : %0d", TRANSACTIONS);
+      $display("  Subtransactions       : %0d", SUBTRANSACTIONS);
+      $display("  Max Burst Length      : %0d", MAX_BURST_LEN);
+      $display("  Max Wait States       : %0d", MAX_WAIT_STATES);
+      $display("  Classic Cycle Prob    : %0d", CLASSIC_PROB);
+      $display("  Const Addr Cycle Prob : %0d", CONST_BURST_PROB);
+      $display("  Incr Addr Cycle Prob  : %0d", INCR_BURST_PROB);
+      $display("  Write Data            : Random");
+      $display("  Buffer Data           : Mirrors RAM");
+      $display("  $random Seed          : %0d", SEED);
+      $display("  Verbosity             : %0d", VERBOSE);
+      $display("");
+      $display("############# Starting Wishbone Master Tests...  #############");
+      $display("");
 
       for(transaction = 1 ; transaction <= TRANSACTIONS; transaction = transaction + 1) begin
         if (VERBOSE>0)
@@ -266,11 +335,13 @@ module wb_bfm_transactor # (
           // Fill Write Array then Send the Write Transaction
           fill_wdata_array(burst_length);
           bfm.write_burst(t_address, t_address, {(dw/8){1'b1}}, cycle_type, burst_type, burst_length, err);
+	  update_stats(cycle_type, burst_type, burst_length);
 
           // Read data can be read back from wishbone memory.
           if (VERBOSE>0)
             $display("  Transaction %0d (Read): Start Address: %h, Cycle Type: %b, Burst Type: %b, Burst Length: %0d", transaction, t_address, cycle_type, burst_type, burst_length);
           bfm.read_burst(t_adr_low, t_address, {dw/8{1'b1}}, cycle_type, burst_type, burst_length, err);
+	  update_stats(cycle_type, burst_type, burst_length);
 
           if (VERBOSE>0)
               $display("Transaction %0d Completed Successfully (Start Address: %h, Cycle Type: %b, Burst Type=%b, Burst Length=%0d)", transaction, t_address, cycle_type, burst_type, burst_length);
@@ -293,11 +364,13 @@ module wb_bfm_transactor # (
           // Fill Write Array then Send the Write Transaction
           fill_wdata_array(MAX_BURST_LEN);
           bfm.write_burst(t_address, t_address, {dw/8{1'b1}}, CTI_INC_BURST, BTE_LINEAR, MAX_BURST_LEN, err);
+          update_stats(cycle_type, burst_type, burst_length);
 
           // Read data can be read back from wishbone memory.
           if (VERBOSE>0)
             $display("  Transaction %0d Initialisation (Read): Start Address: %h, Burst Length: %0d", transaction, t_address, MAX_BURST_LEN);
           bfm.read_burst(t_address, t_address, {dw/8{1'b1}}, CTI_INC_BURST, BTE_LINEAR, MAX_BURST_LEN, err);
+          update_stats(cycle_type, burst_type, burst_length);
 
           if (VERBOSE>0)
             $display("Transaction %0d initialisation ok (Start Address: %h, Cycle Type: %b, Burst Type: %b, Burst Length: %0d)", transaction, t_address, CTI_INC_BURST, BTE_LINEAR, MAX_BURST_LEN);
@@ -331,9 +404,7 @@ module wb_bfm_transactor # (
               bfm.write_burst(t_address, st_address, {dw/8{1'b1}}, cycle_type, burst_type, burst_length, err);
               
             end // if (st_type)
-
-            if (VERBOSE>0)
-              $display("  Subtransaction %0d.%0d Completed Successfully", transaction, subtransaction);
+            update_stats(cycle_type, burst_type, burst_length);
           end // for (subtransaction=0;...
           if (VERBOSE>0)
             $display("Transaction %0d Completed Successfully", transaction);
@@ -344,6 +415,7 @@ module wb_bfm_transactor # (
         bfm.clear_buffer_data;
       end // for (transaction=0;...
       done = 1;
+      display_stats;
    end
    
 endmodule
