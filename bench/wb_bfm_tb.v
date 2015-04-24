@@ -84,6 +84,7 @@ module wb_bfm_tb;
 
    integer 	 TRANSACTIONS;
    integer 	 SUBTRANSACTIONS;
+   integer 	 SEED;
 
    initial begin
       //Grab CLI parameters
@@ -91,6 +92,8 @@ module wb_bfm_tb;
 	master.set_transactions(TRANSACTIONS);
       if($value$plusargs("subtransactions=%d", SUBTRANSACTIONS))
 	master.set_subtransactions(SUBTRANSACTIONS);
+      if($value$plusargs("seed=%d", SEED))
+	master.SEED = SEED;
 
       master.display_settings;
       master.run;

@@ -59,15 +59,9 @@ module wb_bfm_transactor # (
 
    localparam ADR_LSB = $clog2(dw/8);
    
-  integer                    SEED;
-  integer                    TRANSACTIONS    = TRANSACTIONS_PARAM;
-  integer                    SUBTRANSACTIONS = SUBTRANSACTIONS_PARAM;
-
-  // Grab CLI Values
-  initial begin
-    if(!$value$plusargs("seed=%d", SEED))
-      SEED = SEED_PARAM;
-  end
+   integer 	      SEED            = SEED_PARAM;
+   integer 	      TRANSACTIONS    = TRANSACTIONS_PARAM;
+   integer 	      SUBTRANSACTIONS = SUBTRANSACTIONS_PARAM;
 
    integer cnt_cti_classic = 0;
    integer cnt_cti_const_burst = 0;
