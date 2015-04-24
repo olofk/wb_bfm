@@ -149,15 +149,14 @@ module wb_bfm_master #(
   end
   endtask
 
-  task read_burst;
+  task read_burst_comp;
     input  [aw-1:0]          base_addr;
     input  [aw-1:0]          addr_i;
-    input  [dw/8-1:0]             mask_i;
+    input  [dw/8-1:0]        mask_i;
     input  [2:0]             cycle_type_i;
     input  [1:0]             burst_type_i;
     input  [31:0]            burst_length_i;
     output                   err_o;
-
   begin
 
     addr                     = addr_i;

@@ -359,7 +359,7 @@ module wb_bfm_transactor # (
           // Read data can be read back from wishbone memory.
           if (VERBOSE>0)
             $display("  Transaction %0d (Read): Start Address: %h, Cycle Type: %b, Burst Type: %b, Burst Length: %0d", transaction, t_address, cycle_type, burst_type, burst_length);
-          bfm.read_burst(t_adr_low, t_address, {dw/8{1'b1}}, cycle_type, burst_type, burst_length, err);
+          bfm.read_burst_comp(t_adr_low, t_address, {dw/8{1'b1}}, cycle_type, burst_type, burst_length, err);
 	  update_stats(cycle_type, burst_type, burst_length);
 
           if (VERBOSE>0)
@@ -388,7 +388,7 @@ module wb_bfm_transactor # (
           // Read data can be read back from wishbone memory.
           if (VERBOSE>0)
             $display("  Transaction %0d Initialisation (Read): Start Address: %h, Burst Length: %0d", transaction, t_address, MAX_BURST_LEN);
-          bfm.read_burst(t_address, t_address, {dw/8{1'b1}}, CTI_INC_BURST, BTE_LINEAR, MAX_BURST_LEN, err);
+          bfm.read_burst_comp(t_address, t_address, {dw/8{1'b1}}, CTI_INC_BURST, BTE_LINEAR, MAX_BURST_LEN, err);
           update_stats(cycle_type, burst_type, burst_length);
 
           if (VERBOSE>0)
@@ -407,7 +407,7 @@ module wb_bfm_transactor # (
             if (~st_type) begin
 
               // Send Read Transaction
-              bfm.read_burst(t_address, st_address, {dw/8{1'b1}}, cycle_type, burst_type, burst_length, err);
+              bfm.read_burst_comp(t_address, st_address, {dw/8{1'b1}}, cycle_type, burst_type, burst_length, err);
              
             end else begin
 
