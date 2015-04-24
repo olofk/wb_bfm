@@ -131,10 +131,7 @@ module wb_bfm_slave
 	    wb_ack_o <= #Tp 1'b1;
 	 end
 
-	 if(cycle_type === CLASSIC_CYCLE)
-	   @(negedge wb_stb_i);
-	 else
-	   @(posedge wb_clk);
+	 @(posedge wb_clk);
 
 	 wb_ack_o <= #Tp 1'b0;
 	 wb_err_o <= #Tp 1'b0;
