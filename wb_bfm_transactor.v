@@ -82,6 +82,17 @@ module wb_bfm_transactor # (
    integer cnt_bte_wrap_4  = 0;
    integer cnt_bte_wrap_8  = 0;
    integer cnt_bte_wrap_16 = 0;
+   
+  // Check Cycle Probability values add up to 100
+  initial begin
+    if ((CLASSIC_PROB + CONST_BURST_PROB + INCR_BURST_PROB) != 100) begin
+      $display("ERROR: Wishbone Cycle Probability values must total 100. Current values total %0d:", (CLASSIC_PROB + CONST_BURST_PROB + INCR_BURST_PROB));
+      $display("         Classic Cycle Probability                    : %0d", CLASSIC_PROB);
+      $display("         Constant Address Burst Cycle Probability     : %0d", CONST_BURST_PROB);
+      $display("         Incrementing Address Burst Cycle Probability : %0d", INCR_BURST_PROB);
+      $finish(1);
+    end
+  end
 
   wb_bfm_master #(
 		  .dw (dw),
@@ -418,6 +429,12 @@ module wb_bfm_transactor # (
             end // if (st_type)
             update_stats(cycle_type, burst_type, burst_length);
           end // for (subtransaction=0;...
+
+          // Final consistency check... 
+          if (VERBOSE>0)
+            $display("Transaction %0d Buffer Consistency Check: Start Address: %h, Burst Length: %0d", transaction, t_address, MAX_BURST_LEN);
+          bfm.read_burst_comp(t_address, t_address, 4'hf, CTI_INC_BURST, BTE_LINEAR, MAX_BURST_LEN, err);
+
           if (VERBOSE>0)
             $display("Transaction %0d Completed Successfully", transaction);
 
