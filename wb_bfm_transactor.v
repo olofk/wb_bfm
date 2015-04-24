@@ -294,6 +294,32 @@ module wb_bfm_transactor # (
        end
      end
    endtask
+
+   task display_settings;
+      begin
+	 $display("##############################################################");
+	 $display("############# Wishbone Master Test Configuration #############");
+	 $display("##############################################################");
+	 $display("");
+	 $display("%m:");
+	 $display("  Memory High Address   : %h", MEM_HIGH);
+	 $display("  Memory Low Address    : %h", MEM_LOW);
+	 $display("  Transactions          : %0d", TRANSACTIONS);
+	 $display("  Subtransactions       : %0d", SUBTRANSACTIONS);
+	 $display("  Max Burst Length      : %0d", MAX_BURST_LEN);
+	 $display("  Max Wait States       : %0d", MAX_WAIT_STATES);
+	 $display("  Classic Cycle Prob    : %0d", CLASSIC_PROB);
+	 $display("  Const Addr Cycle Prob : %0d", CONST_BURST_PROB);
+	 $display("  Incr Addr Cycle Prob  : %0d", INCR_BURST_PROB);
+	 $display("  Write Data            : Random");
+	 $display("  Buffer Data           : Mirrors RAM");
+	 $display("  $random Seed          : %0d", SEED);
+	 $display("  Verbosity             : %0d", VERBOSE);
+	 $display("");
+	 $display("############# Starting Wishbone Master Tests...  #############");
+	 $display("");
+      end
+   endtask
    
    integer                   burst_length;
    reg [1:0]                 burst_type;
@@ -317,27 +343,6 @@ module wb_bfm_transactor # (
       st_type = 0;
       err     = 0;
 
-      $display("##############################################################");
-      $display("############# Wishbone Master Test Configuration #############");
-      $display("##############################################################");
-      $display("");
-      $display("%m:");
-      $display("  Memory High Address   : %h", MEM_HIGH);
-      $display("  Memory Low Address    : %h", MEM_LOW);
-      $display("  Transactions          : %0d", TRANSACTIONS);
-      $display("  Subtransactions       : %0d", SUBTRANSACTIONS);
-      $display("  Max Burst Length      : %0d", MAX_BURST_LEN);
-      $display("  Max Wait States       : %0d", MAX_WAIT_STATES);
-      $display("  Classic Cycle Prob    : %0d", CLASSIC_PROB);
-      $display("  Const Addr Cycle Prob : %0d", CONST_BURST_PROB);
-      $display("  Incr Addr Cycle Prob  : %0d", INCR_BURST_PROB);
-      $display("  Write Data            : Random");
-      $display("  Buffer Data           : Mirrors RAM");
-      $display("  $random Seed          : %0d", SEED);
-      $display("  Verbosity             : %0d", VERBOSE);
-      $display("");
-      $display("############# Starting Wishbone Master Tests...  #############");
-      $display("");
 
       for(transaction = 1 ; transaction <= TRANSACTIONS; transaction = transaction + 1) begin
         if (VERBOSE>0)

@@ -82,6 +82,10 @@ module wb_bfm_tb;
       .wb_err_o (wb_s2m_err),
       .wb_rty_o (wb_s2m_rty));
 
+   initial begin
+      master.display_settings;
+   end
+
    always @(posedge done) begin
       $display("All tests complete");
       $finish;
