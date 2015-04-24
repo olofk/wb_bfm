@@ -351,62 +351,35 @@ module wb_bfm_transactor # (
         if (VERBOSE>2)
           $display("  Number of Wait States for Transaction %0d is %0d", transaction, bfm.wait_states);
 
-        if (SUBTRANSACTIONS == 0) begin
-          // No subtransactions, just run basic test: Write Burst Transaction
-          // followed by identical Read Burst Transaction.
-          $display("  Running Basic Tests Only. To run fully randomised tests set number of subtransactions >= 1");
-         
-	  {t_address, cycle_type, burst_type, burst_length} = gen_cycle_params(MEM_LOW, MEM_HIGH);
-
-          // Write Transaction
-          if (VERBOSE>0)
-            $display("  Transaction %0d (Write): Start Address: %h, Cycle Type: %b, Burst Type: %b, Burst Length: %0d", transaction, t_address, cycle_type, burst_type, burst_length);
-          
-          // Fill Write Array then Send the Write Transaction
-          fill_wdata_array(burst_length);
-          bfm.write_burst(t_address, t_address, {(dw/8){1'b1}}, cycle_type, burst_type, burst_length, err);
-	  update_stats(cycle_type, burst_type, burst_length);
-
-          // Read data can be read back from wishbone memory.
-          if (VERBOSE>0)
-            $display("  Transaction %0d (Read): Start Address: %h, Cycle Type: %b, Burst Type: %b, Burst Length: %0d", transaction, t_address, cycle_type, burst_type, burst_length);
-          bfm.read_burst_comp(t_adr_low, t_address, {dw/8{1'b1}}, cycle_type, burst_type, burst_length, err);
-	  update_stats(cycle_type, burst_type, burst_length);
-
-          if (VERBOSE>0)
-              $display("Transaction %0d Completed Successfully (Start Address: %h, Cycle Type: %b, Burst Type=%b, Burst Length=%0d)", transaction, t_address, cycle_type, burst_type, burst_length);
-        end else begin
-          // Fully randomised test suite.
-
-          // Check if initial base address and max burst length lie within
-          // MEM_HIGH/MEM_LOW bounds. If not, regenerate random values until condition met.
-          t_adr_high  = 0;
-          t_adr_low   = 0;
-          while((t_adr_high > MEM_HIGH) || (t_adr_low < MEM_LOW) || (t_adr_high == t_adr_low)) begin
+         // Check if initial base address and max burst length lie within
+         // MEM_HIGH/MEM_LOW bounds. If not, regenerate random values until condition met.
+         t_adr_high  = 0;
+         t_adr_low   = 0;
+         while((t_adr_high > MEM_HIGH) || (t_adr_low < MEM_LOW) || (t_adr_high == t_adr_low)) begin
             t_address                   = gen_adr(MEM_LOW, MEM_HIGH);
             {t_adr_high,t_adr_low}      = adr_range(t_address, MAX_BURST_LEN, CTI_INC_BURST, BTE_LINEAR);
-          end
+         end
 
-          // Write Transaction
-          if (VERBOSE>0)
-            $display("  Transaction %0d Initialisation (Write): Start Address: %h, Burst Length: %0d", transaction, t_address, MAX_BURST_LEN);
+         // Write Transaction
+         if (VERBOSE>0)
+           $display("  Transaction %0d Initialisation (Write): Start Address: %h, Burst Length: %0d", transaction, t_address, MAX_BURST_LEN);
           
-          // Fill Write Array then Send the Write Transaction
-          fill_wdata_array(MAX_BURST_LEN);
-          bfm.write_burst(t_address, t_address, {dw/8{1'b1}}, CTI_INC_BURST, BTE_LINEAR, MAX_BURST_LEN, err);
-          update_stats(cycle_type, burst_type, burst_length);
+         // Fill Write Array then Send the Write Transaction
+         fill_wdata_array(MAX_BURST_LEN);
+         bfm.write_burst(t_address, t_address, {dw/8{1'b1}}, CTI_INC_BURST, BTE_LINEAR, MAX_BURST_LEN, err);
+         update_stats(cycle_type, burst_type, burst_length);
 
-          // Read data can be read back from wishbone memory.
-          if (VERBOSE>0)
-            $display("  Transaction %0d Initialisation (Read): Start Address: %h, Burst Length: %0d", transaction, t_address, MAX_BURST_LEN);
-          bfm.read_burst_comp(t_address, t_address, {dw/8{1'b1}}, CTI_INC_BURST, BTE_LINEAR, MAX_BURST_LEN, err);
-          update_stats(cycle_type, burst_type, burst_length);
+         // Read data can be read back from wishbone memory.
+         if (VERBOSE>0)
+           $display("  Transaction %0d Initialisation (Read): Start Address: %h, Burst Length: %0d", transaction, t_address, MAX_BURST_LEN);
+         bfm.read_burst_comp(t_address, t_address, {dw/8{1'b1}}, CTI_INC_BURST, BTE_LINEAR, MAX_BURST_LEN, err);
+         update_stats(cycle_type, burst_type, burst_length);
 
-          if (VERBOSE>0)
-            $display("Transaction %0d initialisation ok (Start Address: %h, Cycle Type: %b, Burst Type: %b, Burst Length: %0d)", transaction, t_address, CTI_INC_BURST, BTE_LINEAR, MAX_BURST_LEN);
+         if (VERBOSE>0)
+           $display("Transaction %0d initialisation ok (Start Address: %h, Cycle Type: %b, Burst Type: %b, Burst Length: %0d)", transaction, t_address, CTI_INC_BURST, BTE_LINEAR, MAX_BURST_LEN);
 
-          // Start subtransaction loop.
-          for (subtransaction = 1; subtransaction <= SUBTRANSACTIONS ; subtransaction = subtransaction + 1) begin
+         // Start subtransaction loop.
+         for (subtransaction = 1; subtransaction <= SUBTRANSACTIONS ; subtransaction = subtransaction + 1) begin
 
             // Transaction Type: 0=Read, 1=Write
             st_type                     = {$random(SEED)} % 2;
@@ -417,31 +390,29 @@ module wb_bfm_transactor # (
 
             if (~st_type) begin
 
-              // Send Read Transaction
-              bfm.read_burst_comp(t_address, st_address, {dw/8{1'b1}}, cycle_type, burst_type, burst_length, err);
+               // Send Read Transaction
+               bfm.read_burst_comp(t_address, st_address, {dw/8{1'b1}}, cycle_type, burst_type, burst_length, err);
              
             end else begin
 
-              // Fill Write Array then Send the Write Transaction
-              fill_wdata_array(burst_length);
-              bfm.write_burst(t_address, st_address, {dw/8{1'b1}}, cycle_type, burst_type, burst_length, err);
+               // Fill Write Array then Send the Write Transaction
+               fill_wdata_array(burst_length);
+               bfm.write_burst(t_address, st_address, {dw/8{1'b1}}, cycle_type, burst_type, burst_length, err);
               
             end // if (st_type)
             update_stats(cycle_type, burst_type, burst_length);
-          end // for (subtransaction=0;...
+         end // for (subtransaction=0;...
 
-          // Final consistency check... 
-          if (VERBOSE>0)
-            $display("Transaction %0d Buffer Consistency Check: Start Address: %h, Burst Length: %0d", transaction, t_address, MAX_BURST_LEN);
-          bfm.read_burst_comp(t_address, t_address, 4'hf, CTI_INC_BURST, BTE_LINEAR, MAX_BURST_LEN, err);
+         // Final consistency check... 
+         if (VERBOSE>0)
+           $display("Transaction %0d Buffer Consistency Check: Start Address: %h, Burst Length: %0d", transaction, t_address, MAX_BURST_LEN);
+         bfm.read_burst_comp(t_address, t_address, 4'hf, CTI_INC_BURST, BTE_LINEAR, MAX_BURST_LEN, err);
 
-          if (VERBOSE>0)
-            $display("Transaction %0d Completed Successfully", transaction);
+         if (VERBOSE>0)
+           $display("Transaction %0d Completed Successfully", transaction);
 
-        end // if (SUBTRANSACTIONS == 0)
-
-        // Clear Buffer Data before next transaction
-        bfm.clear_buffer_data;
+         // Clear Buffer Data before next transaction
+         bfm.clear_buffer_data;
       end // for (transaction=0;...
       done = 1;
       display_stats;
