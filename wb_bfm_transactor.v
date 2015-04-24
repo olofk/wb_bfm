@@ -60,15 +60,11 @@ module wb_bfm_transactor # (
    localparam ADR_LSB = $clog2(dw/8);
    
   integer                    SEED;
-  integer                    TRANSACTIONS;
-  integer                    SUBTRANSACTIONS;
+  integer                    TRANSACTIONS    = TRANSACTIONS_PARAM;
+  integer                    SUBTRANSACTIONS = SUBTRANSACTIONS_PARAM;
 
   // Grab CLI Values
   initial begin
-    if(!$value$plusargs("transactions=%d", TRANSACTIONS))
-      TRANSACTIONS    = TRANSACTIONS_PARAM;
-    if(!$value$plusargs("subtransactions=%d", SUBTRANSACTIONS))
-      SUBTRANSACTIONS = SUBTRANSACTIONS_PARAM;
     if(!$value$plusargs("seed=%d", SEED))
       SEED = SEED_PARAM;
   end
@@ -280,6 +276,20 @@ module wb_bfm_transactor # (
       end
    endtask
    
+   task set_transactions;
+      input integer transactions_i;
+      begin
+	 TRANSACTIONS = transactions_i;
+      end
+   endtask
+
+   task set_subtransactions;
+      input integer transactions_i;
+      begin
+	 SUBTRANSACTIONS = transactions_i;
+      end
+   endtask
+
    // Task to fill Write Data array.
    // random data will be used.
    task fill_wdata_array;
@@ -337,12 +347,16 @@ module wb_bfm_transactor # (
    reg [aw-1:0]              st_address;
    reg                       st_type;
 
-   initial begin
+   task run;
+      begin
+	 if(TRANSACTIONS < 1) begin
+	    $error("%0d transactions requested. Number of transactions must be set to > 0", TRANSACTIONS);
+	    $finish;
+	 end
       bfm.reset;
       done    = 0;
       st_type = 0;
       err     = 0;
-
 
       for(transaction = 1 ; transaction <= TRANSACTIONS; transaction = transaction + 1) begin
         if (VERBOSE>0)
@@ -420,7 +434,7 @@ module wb_bfm_transactor # (
          bfm.clear_buffer_data;
       end // for (transaction=0;...
       done = 1;
-      display_stats;
    end
+   endtask
    
 endmodule

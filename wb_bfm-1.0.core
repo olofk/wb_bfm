@@ -15,3 +15,7 @@ tb_private_src_files =
 
 [simulator]
 toplevel=wb_bfm_tb
+
+[plusargs]
+transactions = int Number of transactions to run
+subtransactions = int Number of subtransactions to run

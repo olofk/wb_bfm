@@ -82,8 +82,19 @@ module wb_bfm_tb;
       .wb_err_o (wb_s2m_err),
       .wb_rty_o (wb_s2m_rty));
 
+   integer 	 TRANSACTIONS;
+   integer 	 SUBTRANSACTIONS;
+
    initial begin
+      //Grab CLI parameters
+      if($value$plusargs("transactions=%d", TRANSACTIONS))
+	master.set_transactions(TRANSACTIONS);
+      if($value$plusargs("subtransactions=%d", SUBTRANSACTIONS))
+	master.set_subtransactions(SUBTRANSACTIONS);
+
       master.display_settings;
+      master.run;
+      master.display_stats;
    end
 
    always @(posedge done) begin
