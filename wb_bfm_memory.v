@@ -101,7 +101,6 @@ module wb_bfm_memory
 	 end else begin
 	    if(bfm0.op === WRITE) begin
 	       bfm0.write_ack(data);
-	       address = bfm0.address;
 	       if(DEBUG) $display("%d : ram Write 0x%h = 0x%h %b", $time, address, data, bfm0.mask);
 	       for(i=0;i < dw/8; i=i+1)
 		 if(bfm0.mask[i])
