@@ -47,6 +47,7 @@ module wb_bfm_tb;
 
    wb_bfm_transactor
      #(.MEM_HIGH (32'h00007fff),
+       .AUTORUN (0),
        .VERBOSE (0))
    master
      (.wb_clk_i (wb_clk),
