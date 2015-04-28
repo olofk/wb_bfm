@@ -26,6 +26,7 @@
 module wb_bfm_transactor # (
     parameter                aw              = 32,
     parameter                dw              = 32,
+    parameter                AUTORUN         = 1,
     parameter                MEM_HIGH        = 32'hffffffff,
     parameter                MEM_LOW         = 0,
     parameter                TRANSACTIONS_PARAM    = 1000,
@@ -81,6 +82,12 @@ module wb_bfm_transactor # (
       $display("         Constant Address Burst Cycle Probability     : %0d", CONST_BURST_PROB);
       $display("         Incrementing Address Burst Cycle Probability : %0d", INCR_BURST_PROB);
       $finish(1);
+    end
+    if (AUTORUN) begin
+       display_settings;
+       run;
+       display_stats;
+       done = 1;
     end
   end
 
