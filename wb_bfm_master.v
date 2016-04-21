@@ -99,6 +99,7 @@ module wb_bfm_master #(
       @(posedge wb_clk_i);
       next;
       err_o                  = wb_err_i;
+      insert_wait_states;
      end
   endtask //
 
