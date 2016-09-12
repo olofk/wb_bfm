@@ -20,7 +20,7 @@
 module wb_bfm_tb;   
 
    vlog_tb_utils vlog_tb_utils0();
-   vlog_tap_generator #("wb_bfm.tap") vtg();
+   vlog_tap_generator #("wb_bfm.tap", 1) vtg();
 
    localparam aw = 32;
    localparam dw = 32;
