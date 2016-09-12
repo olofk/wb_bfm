@@ -20,7 +20,8 @@
 module wb_bfm_tb;   
 
    vlog_tb_utils vlog_tb_utils0();
-   
+   vlog_tap_generator vtg();
+
    localparam aw = 32;
    localparam dw = 32;
    
@@ -102,6 +103,7 @@ module wb_bfm_tb;
    end
 
    always @(posedge done) begin
+      vtg.ok("All tests complete");
       $display("All tests complete");
       $finish;
    end
