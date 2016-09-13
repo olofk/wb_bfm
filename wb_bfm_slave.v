@@ -39,7 +39,7 @@ module wb_bfm_slave
 `include "wb_common.v"
 
    localparam Tp = 1;
-   
+
    reg 			   has_next = 1'b0;
 
    reg 			   op = READ;
@@ -50,7 +50,7 @@ module wb_bfm_slave
    reg [2:0] 		   burst_type;
 
    reg 			   err = 0;
-   
+
    task init;
       begin
 	 wb_ack_o <= #Tp 1'b0;
@@ -69,14 +69,14 @@ module wb_bfm_slave
 	 if (!wb_cyc_i)
 	   @(posedge wb_cyc_i);
 	 @(posedge wb_clk);
-	 
+
 	 //Make sure that wb_cyc_i is still asserted at next clock edge to avoid glitches
 	 while(wb_cyc_i !== 1'b1)
 	   @(posedge wb_clk);
 	 if(DEBUG) $display("%0d : Got wb_cyc_i", $time);
 
 	 cycle_type = get_cycle_type(wb_cti_i);
-	 
+
 	 op      = wb_we_i;
 	 address = wb_adr_i;
 	 mask    = wb_sel_i;
@@ -110,8 +110,8 @@ module wb_bfm_slave
 	 data_o = data;
       end
    endtask
-   
-      
+
+
    task next;
       begin
 	 if(DEBUG) $display("%0d : next address=0x%h, data=0x%h, op=%b", $time, address, data, op);
@@ -143,7 +143,7 @@ module wb_bfm_slave
 	    mask = wb_sel_i;
 	 end
 	 address = wb_adr_i;
-	 
+
       end
    endtask
 

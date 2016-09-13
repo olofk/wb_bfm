@@ -23,7 +23,7 @@ module wb_bfm_master #(
   parameter                  dw              = 32,
   parameter                  Tp              = 0,
   parameter                  MAX_BURST_LEN   = 32,
-  parameter                  MAX_WAIT_STATES = 8, 
+  parameter                  MAX_WAIT_STATES = 8,
   parameter                  VERBOSE         = 0
 ) (
   input 		wb_clk_i,
@@ -46,7 +46,7 @@ module wb_bfm_master #(
 
   localparam                 BUFFER_WIDTH = $clog2(MAX_BURST_LEN);
    localparam ADR_LSB = $clog2(dw/8);
-   
+
   reg [aw-1:0]               addr;
   reg [31:0]                 index = 0;
   reg [dw-1:0]               data = {dw{1'b0}};
@@ -192,7 +192,7 @@ module wb_bfm_master #(
     input [31:0]             iteration;
 
     begin
-      
+
       if (VERBOSE>2) begin
         $display("    %t: Comparing Read Data for iteration %0d at address: %h", $time, iteration, addr);
         $display("    %t: Read Data: %h, buffer data: %h, buffer address: %h", $time, read_data, buffer_data[buffer_addr], buffer_addr);

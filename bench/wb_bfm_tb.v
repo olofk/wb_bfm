@@ -17,22 +17,22 @@
 * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 */
 
-module wb_bfm_tb;   
+module wb_bfm_tb;
 
    vlog_tb_utils vlog_tb_utils0();
    vlog_tap_generator #("wb_bfm.tap", 1) vtg();
 
    localparam aw = 32;
    localparam dw = 32;
-   
+
    reg	   wb_clk = 1'b1;
    reg	   wb_rst = 1'b1;
-   
+
    always #5 wb_clk <= ~wb_clk;
    initial  #100 wb_rst <= 0;
 
    wire    done;
-   
+
    wire [aw-1:0] wb_m2s_adr;
    wire [dw-1:0] wb_m2s_dat;
    wire [3:0] 	 wb_m2s_sel;
@@ -66,7 +66,7 @@ module wb_bfm_tb;
       .wb_err_i (wb_s2m_err),
       .wb_rty_i (wb_s2m_rty),
       .done     (done));
-   
+
    wb_bfm_memory #(.DEBUG (0))
    wb_mem_model0
      (.wb_clk_i (wb_clk),

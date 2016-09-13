@@ -59,7 +59,7 @@ module wb_bfm_transactor # (
   `include "wb_common_params.v"
 
    localparam ADR_LSB = $clog2(dw/8);
-   
+
    integer 	      SEED            = SEED_PARAM;
    integer 	      TRANSACTIONS    = TRANSACTIONS_PARAM;
    integer 	      SUBTRANSACTIONS = SUBTRANSACTIONS_PARAM;
@@ -73,7 +73,7 @@ module wb_bfm_transactor # (
    integer cnt_bte_wrap_4  = 0;
    integer cnt_bte_wrap_8  = 0;
    integer cnt_bte_wrap_16 = 0;
-   
+
   // Check Cycle Probability values add up to 100
   initial begin
     if ((CLASSIC_PROB + CONST_BURST_PROB + INCR_BURST_PROB) != 100) begin
@@ -102,7 +102,7 @@ module wb_bfm_transactor # (
     .wb_adr_o                (wb_adr_o),
     .wb_dat_o                (wb_dat_o),
     .wb_sel_o                (wb_sel_o),
-    .wb_we_o                 (wb_we_o), 
+    .wb_we_o                 (wb_we_o),
     .wb_cyc_o                (wb_cyc_o),
     .wb_stb_o                (wb_stb_o),
     .wb_cti_o                (wb_cti_o),
@@ -145,7 +145,7 @@ module wb_bfm_transactor # (
       reg [2:0]      cycle_type;
       reg [1:0]      burst_type;
       reg [31:0]     burst_length;
-      
+
       begin
          adr_low  = 0;
          adr_high = 0;
@@ -164,7 +164,7 @@ module wb_bfm_transactor # (
 	 gen_cycle_params = {address, cycle_type, burst_type, burst_length};
       end
    endfunction
-      
+
    /*Return a 2*aw array with the highest and lowest accessed addresses
     based on starting address and burst type
     TODO: Account for short wrap bursts. Fix for 8-bit mode*/
@@ -178,7 +178,7 @@ module wb_bfm_transactor # (
      reg [aw-1:0]            adr_high;
      reg [aw-1:0]            adr_low;
       integer 		     shift;
-      
+
    begin
      //if (bpw == 4) begin
       shift = $clog2(bpw);
@@ -264,7 +264,7 @@ module wb_bfm_transactor # (
       input [1:0]    burst_type;
       input integer  burst_length;
       input 	     wr;
-      
+
       begin
 	 if (VERBOSE > 0) begin
 	    $write("  Subtransaction %0d.%0d ", transaction, subtransaction);
@@ -276,7 +276,7 @@ module wb_bfm_transactor # (
 	 end
       end
    endtask
-   
+
    task set_transactions;
       input integer transactions_i;
       begin
@@ -294,10 +294,10 @@ module wb_bfm_transactor # (
    // Task to fill Write Data array.
    // random data will be used.
    task fill_wdata_array;
-     input  [31:0]            burst_length; 
+     input  [31:0]            burst_length;
 
      integer 		      word;
-      
+
      begin
        // Fill write data array
        for(word = 0; word <= burst_length-1; word = word + 1) begin
@@ -331,17 +331,17 @@ module wb_bfm_transactor # (
 	 $display("");
       end
    endtask
-   
+
    integer                   burst_length;
    reg [1:0]                 burst_type;
-   
+
    reg [2:0]                 cycle_type;
 
    integer                   transaction;
    integer                   subtransaction;
-  
+
    reg                       err;
-  
+
    reg [aw-1:0]              t_address;
    reg [aw-1:0]              t_adr_high;
    reg [aw-1:0]              t_adr_low;
@@ -383,7 +383,7 @@ module wb_bfm_transactor # (
          // Write Transaction
          if (VERBOSE>0)
            $display("  Transaction %0d Initialisation (Write): Start Address: %h, Burst Length: %0d", transaction, t_address, MAX_BURST_LEN);
-          
+
          // Fill Write Array then Send the Write Transaction
          fill_wdata_array(MAX_BURST_LEN);
          bfm.write_burst(t_address, t_address, {dw/8{1'b1}}, CTI_INC_BURST, BTE_LINEAR, MAX_BURST_LEN, err);
@@ -405,25 +405,25 @@ module wb_bfm_transactor # (
             st_type                     = {$random(SEED)} % 2;
 
             {st_address, cycle_type, burst_type, burst_length} = gen_cycle_params(t_adr_low, t_adr_high);
-                 
+
             display_subtransaction(st_address, cycle_type, burst_type, burst_length, st_type);
 
             if (~st_type) begin
 
                // Send Read Transaction
                bfm.read_burst_comp(t_address, st_address, {dw/8{1'b1}}, cycle_type, burst_type, burst_length, err);
-             
+
             end else begin
 
                // Fill Write Array then Send the Write Transaction
                fill_wdata_array(burst_length);
                bfm.write_burst(t_address, st_address, {dw/8{1'b1}}, cycle_type, burst_type, burst_length, err);
-              
+
             end // if (st_type)
             update_stats(cycle_type, burst_type, burst_length);
          end // for (subtransaction=0;...
 
-         // Final consistency check... 
+         // Final consistency check...
          if (VERBOSE>0)
            $display("Transaction %0d Buffer Consistency Check: Start Address: %h, Burst Length: %0d", transaction, t_address, MAX_BURST_LEN);
          bfm.read_burst_comp(t_address, t_address, 4'hf, CTI_INC_BURST, BTE_LINEAR, MAX_BURST_LEN, err);
@@ -437,5 +437,5 @@ module wb_bfm_transactor # (
       done = 1;
    end
    endtask
-   
+
 endmodule

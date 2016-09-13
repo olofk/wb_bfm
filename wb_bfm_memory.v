@@ -29,7 +29,7 @@ module wb_bfm_memory
    parameter rd_max_delay = 4)
   (input 	   wb_clk_i,
    input 	   wb_rst_i,
-   
+
    input [aw-1:0]  wb_adr_i,
    input [dw-1:0]  wb_dat_i,
    input [dw/8-1:0] 	   wb_sel_i,
@@ -38,16 +38,16 @@ module wb_bfm_memory
    input [2:0] 	   wb_cti_i,
    input 	   wb_cyc_i,
    input 	   wb_stb_i,
-   
+
    output 	   wb_ack_o,
    output 	   wb_err_o,
    output 	   wb_rty_o,
    output [dw-1:0] wb_dat_o);
 
 `include "wb_common.v"
-   
+
    localparam bytes_per_dw = (dw/8);
-   localparam mem_words = (mem_size_bytes/bytes_per_dw);   
+   localparam mem_words = (mem_size_bytes/bytes_per_dw);
 
    localparam ADR_LSB = $clog2(bytes_per_dw);
 
@@ -68,7 +68,7 @@ module wb_bfm_memory
       .wb_adr_i (wb_adr_i),
       .wb_dat_i (wb_dat_i),
       .wb_sel_i (wb_sel_i),
-      .wb_we_i  (wb_we_i), 
+      .wb_we_i  (wb_we_i),
       .wb_cyc_i (wb_cyc_i),
       .wb_stb_i (wb_stb_i),
       .wb_cti_i (wb_cti_i),
@@ -84,7 +84,7 @@ module wb_bfm_memory
    integer 		i;
    integer 		delay;
    integer 		seed;
-   
+
    always begin
       bfm0.init();
       address = bfm0.address; //Fetch start address
