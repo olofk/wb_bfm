@@ -1,5 +1,6 @@
 CAPI=1
 [main]
+name = ::wb_bfm:1.1
 description = Wishbone BFM
 depend = wb_common
 simulators = icarus modelsim
@@ -11,7 +12,6 @@ files =
  wb_bfm_memory.v
  wb_bfm_transactor.v
 file_type = verilogSource
-usage = sim synth
 
 [fileset tb]
 files =
@@ -36,7 +36,7 @@ scope       = private
 toplevel = wb_bfm_tb
 
 [icarus]
-depend = vlog_tb_utils-1.0
+depend = >=vlog_tb_utils-1.1
 
 [modelsim]
-depend = vlog_tb_utils-1.0
+depend = >=vlog_tb_utils-1.1
