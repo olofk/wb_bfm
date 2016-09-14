@@ -134,7 +134,7 @@ module wb_bfm_master #(
         $display("    %t: Write Data %h written to buffer at address %h at iteration %0d", $time, write_data[index], buffer_addr, index);
         $display("    %t: Write Data %h written to memory at address %h at iteration %0d", $time, write_data[index], addr, index);
       end else if (VERBOSE>1) begin
-        $display("    Write Data %h written to memory at address %h at iteration %0d", write_data[index], addr, index);
+        $display("    %t: Write Data %h written to memory at address %h at iteration %0d", $time, write_data[index], addr, index);
       end
 
       next;
