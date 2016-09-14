@@ -30,6 +30,8 @@ module wb_bfm_transactor # (
     parameter                MEM_HIGH        = 32'hffffffff,
     parameter                MEM_LOW         = 0,
     parameter                TRANSACTIONS_PARAM    = 1000,
+    parameter                SEGMENT_SIZE    = 0,
+    parameter                NUM_SEGMENTS    = 0,
     parameter                SUBTRANSACTIONS_PARAM = 100,
     parameter                VERBOSE         = 0,
     parameter                MAX_BURST_LEN   = 32,
@@ -313,8 +315,15 @@ module wb_bfm_transactor # (
 	 $display("##############################################################");
 	 $display("");
 	 $display("%m:");
-	 $display("  Memory High Address   : %h", MEM_HIGH);
-	 $display("  Memory Low Address    : %h", MEM_LOW);
+	 if (NUM_SEGMENTS > 0) begin
+	    $display("  Number of segments    : %0d", NUM_SEGMENTS);
+	    $display("  Segment size          : %h", SEGMENT_SIZE);
+	    $display("  Memory High Address   : %h", MEM_LOW+NUM_SEGMENTS*SEGMENT_SIZE-1);
+	    $display("  Memory Low Address    : %h", MEM_LOW);
+	 end else begin
+	    $display("  Memory High Address   : %h", MEM_HIGH);
+	    $display("  Memory Low Address    : %h", MEM_LOW);
+	 end
 	 $display("  Transactions          : %0d", TRANSACTIONS);
 	 $display("  Subtransactions       : %0d", SUBTRANSACTIONS);
 	 $display("  Max Burst Length      : %0d", MAX_BURST_LEN);
@@ -348,6 +357,10 @@ module wb_bfm_transactor # (
    reg [aw-1:0]              st_address;
    reg                       st_type;
 
+   integer 		     mem_lo;
+   integer 		     mem_hi;
+   integer 		     segment;
+
    task run;
       begin
 	 if(TRANSACTIONS < 1) begin
@@ -371,12 +384,22 @@ module wb_bfm_transactor # (
         if (VERBOSE>2)
           $display("  Number of Wait States for Transaction %0d is %0d", transaction, bfm.wait_states);
 
+	 //If running in segment mode, cap mem_high/mem_low to a segment
+	 if (NUM_SEGMENTS > 0) begin
+	    segment = {$random(SEED)} % NUM_SEGMENTS;
+	    mem_lo =  MEM_LOW + segment    * SEGMENT_SIZE;
+	    mem_hi =  MEM_LOW + (segment+1) * SEGMENT_SIZE - 1;
+	 end else begin
+	    mem_lo = MEM_LOW;
+	    mem_hi = MEM_HIGH;
+	 end
+
          // Check if initial base address and max burst length lie within
-         // MEM_HIGH/MEM_LOW bounds. If not, regenerate random values until condition met.
+         // mem_hi/mem_lo bounds. If not, regenerate random values until condition met.
          t_adr_high  = 0;
          t_adr_low   = 0;
-         while((t_adr_high > MEM_HIGH) || (t_adr_low < MEM_LOW) || (t_adr_high == t_adr_low)) begin
-            t_address                   = gen_adr(MEM_LOW, MEM_HIGH);
+         while((t_adr_high > mem_hi) || (t_adr_low < mem_lo) || (t_adr_high == t_adr_low)) begin
+            t_address                   = gen_adr(mem_lo, mem_hi);
             {t_adr_high,t_adr_low}      = adr_range(t_address, MAX_BURST_LEN, CTI_INC_BURST, BTE_LINEAR);
          end
 
