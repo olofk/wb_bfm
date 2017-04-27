@@ -49,7 +49,7 @@ module wb_bfm_memory
    localparam bytes_per_dw = (dw/8);
    localparam mem_words = (mem_size_bytes/bytes_per_dw);
 
-   localparam ADR_LSB = $clog2(bytes_per_dw);
+   parameter ADR_LSB = $clog2(bytes_per_dw);
 
    //Counters for read and write accesses
    integer 		   reads  = 0;

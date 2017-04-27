@@ -3,7 +3,7 @@ CAPI=1
 name = ::wb_bfm:1.1
 description = Wishbone BFM
 depend = wb_common
-simulators = icarus modelsim
+simulators = icarus isim modelsim
 
 [fileset rtl_files]
 files =
@@ -37,6 +37,10 @@ toplevel = wb_bfm_tb
 
 [icarus]
 depend = >=vlog_tb_utils-1.1
+
+[isim]
+depend = >=vlog_tb_utils-1.1
+isim_options = -d BROKEN_CLOG2
 
 [modelsim]
 depend = >=vlog_tb_utils-1.1

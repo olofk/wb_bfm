@@ -44,8 +44,8 @@ module wb_bfm_master #(
 
 `include "wb_common.v"
 
-  localparam                 BUFFER_WIDTH = $clog2(MAX_BURST_LEN);
-   localparam ADR_LSB = $clog2(dw/8);
+  parameter                 BUFFER_WIDTH = $clog2(MAX_BURST_LEN);
+  parameter ADR_LSB = $clog2(dw/8);
 
   reg [aw-1:0]               addr;
   reg [31:0]                 index = 0;

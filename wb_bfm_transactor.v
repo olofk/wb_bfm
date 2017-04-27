@@ -60,7 +60,7 @@ module wb_bfm_transactor # (
 
   `include "wb_common_params.v"
 
-   localparam ADR_LSB = $clog2(dw/8);
+   parameter ADR_LSB = $clog2(dw/8);
 
    integer 	      SEED            = SEED_PARAM;
    integer 	      TRANSACTIONS    = TRANSACTIONS_PARAM;
@@ -167,6 +167,16 @@ module wb_bfm_transactor # (
       end
    endfunction
 
+`ifdef BROKEN_CLOG2
+function integer clog2;
+input integer in;
+begin
+	in = in - 1;
+	for (clog2 = 0; in > 0; clog2=clog2+1)
+		in = in >> 1;
+end
+endfunction
+`endif
    /*Return a 2*aw array with the highest and lowest accessed addresses
     based on starting address and burst type
     TODO: Account for short wrap bursts. Fix for 8-bit mode*/
@@ -183,7 +193,11 @@ module wb_bfm_transactor # (
 
    begin
      //if (bpw == 4) begin
+`ifdef BROKEN_CLOG2
+      shift = clog2(bpw);
+`else
       shift = $clog2(bpw);
+`endif
        adr                   = adr_i>>shift;
       if (cti_i === CTI_INC_BURST)
        case (bte_i)
