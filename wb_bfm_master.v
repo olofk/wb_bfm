@@ -201,9 +201,9 @@ module wb_bfm_master #(
       end
 
       if(buffer_data[buffer_addr] !== read_data) begin
-        $error("Read data mismatch during iteration %0d at address %h", iteration, addr);
-        $error("Expected %h", buffer_data[buffer_addr]);
-        $error("Got      %h", read_data);
+        $display("Read data mismatch during iteration %0d at address %h", iteration, addr);
+        $display("Expected %h", buffer_data[buffer_addr]);
+        $display("Got      %h", read_data);
         #3 $finish;
       end else begin
         if (VERBOSE>1) $display("    Data Matched");

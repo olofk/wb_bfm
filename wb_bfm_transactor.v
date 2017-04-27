@@ -204,7 +204,7 @@ module wb_bfm_transactor # (
            adr_low           = adr[aw-1:4]*16;
          end
          default : begin
-           $error("%d : Illegal burst type (%b)", $time, bte_i);
+           $display("%d : Illegal burst type (%b)", $time, bte_i);
            adr_range         = {2*aw{1'bx}};
          end
        endcase // case (bte_i)
@@ -239,7 +239,7 @@ module wb_bfm_transactor # (
              BTE_WRAP_4  : cnt_bte_wrap_4  = cnt_bte_wrap_4  + 1;
              BTE_WRAP_8  : cnt_bte_wrap_8  = cnt_bte_wrap_8  + 1;
              BTE_WRAP_16 : cnt_bte_wrap_16 = cnt_bte_wrap_16 + 1;
-	     default : $error("Invalid BTE %2b", bte);
+	     default : $display("Invalid BTE %2b", bte);
 	   endcase // case (bte)
       end
    endtask
@@ -364,7 +364,7 @@ module wb_bfm_transactor # (
    task run;
       begin
 	 if(TRANSACTIONS < 1) begin
-	    $error("%0d transactions requested. Number of transactions must be set to > 0", TRANSACTIONS);
+	    $display("%0d transactions requested. Number of transactions must be set to > 0", TRANSACTIONS);
 	    $finish;
 	 end
       bfm.reset;
