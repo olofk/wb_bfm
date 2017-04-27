@@ -1,6 +1,6 @@
 CAPI=1
 [main]
-name = ::wb_bfm:1.1
+name = ::wb_bfm:1.2.1
 description = Wishbone BFM
 depend = wb_common
 simulators = icarus isim modelsim
